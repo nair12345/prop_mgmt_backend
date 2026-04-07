@@ -215,3 +215,28 @@ def get_expenses(property_id: int):
             status_code=500,
             detail=f"Failed to fetch expenses: {str(e)}"
         )
+@app.post("/expenses/{property_id}")
+def create_expense(property_id: int, expense: Expense):
+    try:
+        query = f"""
+            INSERT INTO `{PROJECT_ID}.{DATASET}.expenses`
+            (property_id, amount, date, category, vendor, description)
+            VALUES (
+                {property_id},
+                {expense.amount},
+                '{expense.date}',
+                '{expense.category}',
+                {f"'{expense.vendor}'" if expense.vendor else "NULL"},
+                {f"'{expense.description}'" if expense.description else "NULL"}
+            )
+        """
+
+        client.query(query).result()
+
+        return {"status": "success", "message": "Expense record created"}
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to create expense: {str(e)}"
+        )
