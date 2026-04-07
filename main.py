@@ -241,19 +241,29 @@ def create_expense(property_id: int, expense: Expense):
             status_code=500,
             detail=f"Failed to create expense: {str(e)}"
         )
-@app.get("/properties/locations")
-def get_property_locations():
+@app.get("/properties/by-city")
+def get_properties_by_city():
     try:
         query = f"""
-            SELECT property_id, city, state
+            SELECT city, property_id, name, address, state
             FROM `{PROJECT_ID}.{DATASET}.properties`
-            ORDER BY property_id
+            ORDER BY city, property_id
         """
         rows = client.query(query).result()
-        return [dict(row) for row in rows]
+
+        result = {}
+        for row in rows:
+            city = row.city
+            if city not in result:
+                result[city] = []
+            result[city].append({
+                "property_id": row.property_id,
+                "name": row.name,
+                "address": row.address,
+                "state": row.state
+            })
+
+        return result
 
     except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to fetch property locations: {str(e)}"
-        )
+        raise HTTPException(500, f"Failed to fetch properties by city: {str(e)}")
