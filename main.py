@@ -215,6 +215,7 @@ def get_expenses(property_id: int):
             status_code=500,
             detail=f"Failed to fetch expenses: {str(e)}"
         )
+        
 @app.post("/expenses/{property_id}")
 def create_expense(property_id: int, expense: Expense):
     try:
