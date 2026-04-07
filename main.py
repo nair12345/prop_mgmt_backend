@@ -241,19 +241,19 @@ def create_expense(property_id: int, expense: Expense):
             status_code=500,
             detail=f"Failed to create expense: {str(e)}"
         )
-# -----------------------------
-# GET 1: /properties/addresses
-# Returns all property IDs + addresses
-# -----------------------------
-@app.get("/properties/owners")
-def get_property_owners():
+@app.get("/properties/locations")
+def get_property_locations():
     try:
         query = f"""
-            SELECT property_id, owner
+            SELECT property_id, city, state
             FROM `{PROJECT_ID}.{DATASET}.properties`
             ORDER BY property_id
         """
         rows = client.query(query).result()
         return [dict(row) for row in rows]
+
     except Exception as e:
-        raise HTTPException(500, f"Failed to fetch owners: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to fetch property locations: {str(e)}"
+        )
