@@ -241,3 +241,24 @@ def create_expense(property_id: int, expense: Expense):
             status_code=500,
             detail=f"Failed to create expense: {str(e)}"
         )
+# -----------------------------
+# GET 1: /properties/addresses
+# Returns all property IDs + addresses
+# -----------------------------
+@app.get("/properties/addresses")
+def get_property_addresses():
+    try:
+        query = f"""
+            SELECT property_id, address
+            FROM `{PROJECT_ID}.{DATASET}.properties`
+            ORDER BY property_id
+        """
+        rows = client.query(query).result()
+        return [dict(row) for row in rows]
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to fetch property addresses: {str(e)}"
+        )
+        
