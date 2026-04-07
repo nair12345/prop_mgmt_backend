@@ -261,4 +261,3 @@ def get_property_addresses():
             status_code=500,
             detail=f"Failed to fetch property addresses: {str(e)}"
         )
-        
