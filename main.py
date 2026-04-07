@@ -137,3 +137,53 @@ def get_income(property_id: int, bq: bigquery.Client = Depends(get_bq_client)):
         )
 
     return income_records
+
+@app.post("/income/{property_id}")
+def create_income(
+    property_id: int,
+    payload: dict,
+    bq: bigquery.Client = Depends(get_bq_client)
+):
+    """
+    Creates a new income record for a property.
+    Expected JSON body:
+    {
+        "amount": 1200.00,
+        "date": "2024-01-15",
+        "description": "January Rent"
+    }
+    """
+    if "amount" not in payload or "date" not in payload:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Request must include 'amount' and 'date'"
+        )
+
+    query = f"""
+        INSERT INTO `{PROJECT_ID}.{DATASET}.income`
+        (property_id, amount, date, description)
+        VALUES (@property_id, @amount, @date, @description)
+    """
+
+    job_config = bigquery.QueryJobConfig(
+        query_parameters=[
+            bigquery.ScalarQueryParameter("property_id", "INT64", property_id),
+            bigquery.ScalarQueryParameter("amount", "FLOAT64", payload["amount"]),
+            bigquery.ScalarQueryParameter("date", "DATE", payload["date"]),
+            bigquery.ScalarQueryParameter(
+                "description",
+                "STRING",
+                payload.get("description", None)
+            ),
+        ]
+    )
+
+    try:
+        bq.query(query, job_config=job_config).result()
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Insert failed: {str(e)}"
+        )
+
+    return {"status": "success", "message": "Income record created"}
