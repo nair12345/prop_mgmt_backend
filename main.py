@@ -245,7 +245,6 @@ def create_expense(property_id: int, expense: Expense):
 # Properties
 # ---------------------------------------------------------------------------
 
-# STATIC ROUTES FIRST
 @app.get("/properties/by-city")
 def get_properties_by_city():
     try:
@@ -274,10 +273,13 @@ def get_properties_by_city():
         raise HTTPException(500, f"Failed to fetch properties by city: {str(e)}")
 
 
-# THEN PUT DYNAMIC ROUTES BELOW
+# 2️⃣ THEN THE GENERAL PROPERTIES ROUTE
 @app.get("/properties")
 def get_properties(...):
     ...
 
+
+# 3️⃣ THEN THE DYNAMIC ROUTE LAST
 @app.get("/properties/{property_id}")
 def get_property(property_id: int, ...):
+    ...
