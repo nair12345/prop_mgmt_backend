@@ -20,6 +20,50 @@ def get_bq_client():
 
 
 # ---------------------------------------------------------------------------
+# CUSTOM ENDPOINTS (STATIC ROUTES MUST COME FIRST)
+# ---------------------------------------------------------------------------
+
+@app.get("/properties/city/{city}")
+def get_properties_by_city(city: str, bq: bigquery.Client = Depends(get_bq_client)):
+    """
+    Returns all properties located in the specified city.
+    """
+    query = f"""
+        SELECT
+            property_id,
+            name,
+            address,
+            city,
+            state
+        FROM `{PROJECT_ID}.{DATASET}.properties`
+        WHERE LOWER(city) = LOWER(@city)
+        ORDER BY property_id
+    """
+
+    job_config = bigquery.QueryJobConfig(
+        query_parameters=[
+            bigquery.ScalarQueryParameter("city", "STRING", city)
+        ]
+    )
+
+    try:
+        results = list(bq.query(query, job_config=job_config).result())
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Database query failed: {str(e)}"
+        )
+
+    if not results:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No properties found in city '{city}'"
+        )
+
+    return [dict(row) for row in results]
+
+
+# ---------------------------------------------------------------------------
 # Properties
 # ---------------------------------------------------------------------------
 
@@ -51,9 +95,9 @@ def get_properties(bq: bigquery.Client = Depends(get_bq_client)):
             detail=f"Database query failed: {str(e)}"
         )
 
-    properties = [dict(row) for row in results]
-    return properties
-    
+    return [dict(row) for row in results]
+
+
 @app.get("/properties/{property_id}")
 def get_property(property_id: int, bq: bigquery.Client = Depends(get_bq_client)):
     """
@@ -97,6 +141,11 @@ def get_property(property_id: int, bq: bigquery.Client = Depends(get_bq_client))
 
     return dict(results[0])
 
+
+# ---------------------------------------------------------------------------
+# Income
+# ---------------------------------------------------------------------------
+
 @app.get("/income/{property_id}")
 def get_income(property_id: int, bq: bigquery.Client = Depends(get_bq_client)):
     """
@@ -138,20 +187,11 @@ def get_income(property_id: int, bq: bigquery.Client = Depends(get_bq_client)):
 
     return income_records
 
+
 @app.post("/income/{property_id}")
-def create_income(
-    property_id: int,
-    payload: dict,
-    bq: bigquery.Client = Depends(get_bq_client)
-):
+def create_income(property_id: int, payload: dict, bq: bigquery.Client = Depends(get_bq_client)):
     """
     Creates a new income record for a property.
-    Expected JSON body:
-    {
-        "amount": 1200.00,
-        "date": "2024-01-15",
-        "description": "January Rent"
-    }
     """
     if "amount" not in payload or "date" not in payload:
         raise HTTPException(
@@ -170,11 +210,7 @@ def create_income(
             bigquery.ScalarQueryParameter("property_id", "INT64", property_id),
             bigquery.ScalarQueryParameter("amount", "FLOAT64", payload["amount"]),
             bigquery.ScalarQueryParameter("date", "DATE", payload["date"]),
-            bigquery.ScalarQueryParameter(
-                "description",
-                "STRING",
-                payload.get("description", None)
-            ),
+            bigquery.ScalarQueryParameter("description", "STRING", payload.get("description")),
         ]
     )
 
@@ -182,11 +218,16 @@ def create_income(
         bq.query(query, job_config=job_config).result()
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=500,
             detail=f"Insert failed: {str(e)}"
         )
 
     return {"status": "success", "message": "Income record created"}
+
+
+# ---------------------------------------------------------------------------
+# Expenses
+# ---------------------------------------------------------------------------
 
 @app.get("/expenses/{property_id}")
 def get_expenses(property_id: int):
@@ -215,71 +256,3 @@ def get_expenses(property_id: int):
             status_code=500,
             detail=f"Failed to fetch expenses: {str(e)}"
         )
-        
-@app.post("/expenses/{property_id}")
-def create_expense(property_id: int, expense: Expense):
-    try:
-        query = f"""
-            INSERT INTO `{PROJECT_ID}.{DATASET}.expenses`
-            (property_id, amount, date, category, vendor, description)
-            VALUES (
-                {property_id},
-                {expense.amount},
-                '{expense.date}',
-                '{expense.category}',
-                {f"'{expense.vendor}'" if expense.vendor else "NULL"},
-                {f"'{expense.description}'" if expense.description else "NULL"}
-            )
-        """
-
-        client.query(query).result()
-
-        return {"status": "success", "message": "Expense record created"}
-
-    except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to create expense: {str(e)}"
-        )
-# ---------------------------------------------------------------------------
-# Properties
-# ---------------------------------------------------------------------------
-
-@app.get("/properties/by-city")
-def get_properties_by_city():
-    try:
-        query = f"""
-            SELECT city, property_id, name, address, state
-            FROM `{PROJECT_ID}.{DATASET}.properties`
-            ORDER BY city, property_id
-        """
-        rows = client.query(query).result()
-
-        result = {}
-        for row in rows:
-            city = row.city
-            if city not in result:
-                result[city] = []
-            result[city].append({
-                "property_id": row.property_id,
-                "name": row.name,
-                "address": row.address,
-                "state": row.state
-            })
-
-        return result
-
-    except Exception as e:
-        raise HTTPException(500, f"Failed to fetch properties by city: {str(e)}")
-
-
-# 2️⃣ THEN THE GENERAL PROPERTIES ROUTE
-@app.get("/properties")
-def get_properties(...):
-    ...
-
-
-# 3️⃣ THEN THE DYNAMIC ROUTE LAST
-@app.get("/properties/{property_id}")
-def get_property(property_id: int, ...):
-    ...
