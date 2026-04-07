@@ -22,6 +22,9 @@ def get_bq_client():
 # ---------------------------------------------------------------------------
 # CUSTOM ENDPOINTS (STATIC ROUTES MUST COME FIRST)
 # ---------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+# CUSTOM ENDPOINT: GET PROPERTIES BY CITY
+# ---------------------------------------------------------------------------
 
 @app.get("/properties/city/{city}")
 def get_properties_by_city(city: str, bq: bigquery.Client = Depends(get_bq_client)):
@@ -61,7 +64,6 @@ def get_properties_by_city(city: str, bq: bigquery.Client = Depends(get_bq_clien
         )
 
     return [dict(row) for row in results]
-
 
 # ---------------------------------------------------------------------------
 # Properties
