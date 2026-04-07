@@ -55,7 +55,7 @@ def get_properties(bq: bigquery.Client = Depends(get_bq_client)):
     return properties
     
 @app.get("/properties/{property_id}")
-def get_property(property_id: str, bq: bigquery.Client = Depends(get_bq_client)):
+def get_property(property_id: int, bq: bigquery.Client = Depends(get_bq_client)):
     """
     Returns a single property by ID.
     """
@@ -77,7 +77,7 @@ def get_property(property_id: str, bq: bigquery.Client = Depends(get_bq_client))
 
     job_config = bigquery.QueryJobConfig(
         query_parameters=[
-            bigquery.ScalarQueryParameter("property_id", "STRING", property_id)
+            bigquery.ScalarQueryParameter("property_id", "INT64", property_id)
         ]
     )
 
