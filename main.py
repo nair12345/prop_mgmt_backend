@@ -258,3 +258,144 @@ def get_expenses(property_id: int):
             status_code=500,
             detail=f"Failed to fetch expenses: {str(e)}"
         )
+
+# ---------------------------------------------------------------------------
+# PROPERTY FILTER ENDPOINTS (STATIC ROUTES — MUST COME BEFORE /properties/{property_id})
+# ---------------------------------------------------------------------------
+
+@app.get("/properties/city/{city}")
+def get_properties_by_city(city: str, bq: bigquery.Client = Depends(get_bq_client)):
+    """
+    Returns all properties located in the specified city.
+    """
+    query = f"""
+        SELECT
+            property_id,
+            name,
+            address,
+            city,
+            state
+        FROM `{PROJECT_ID}.{DATASET}.properties`
+        WHERE LOWER(city) = LOWER(@city)
+        ORDER BY property_id
+    """
+
+    job_config = bigquery.QueryJobConfig(
+        query_parameters=[
+            bigquery.ScalarQueryParameter("city", "STRING", city)
+        ]
+    )
+
+    try:
+        results = list(bq.query(query, job_config=job_config).result())
+    except Exception as e:
+        raise HTTPException(500, f"Database query failed: {str(e)}")
+
+    if not results:
+        raise HTTPException(404, f"No properties found in city '{city}'")
+
+    return [dict(row) for row in results]
+
+
+@app.get("/properties/state/{state}")
+def get_properties_by_state(state: str, bq: bigquery.Client = Depends(get_bq_client)):
+    """
+    Returns all properties located in the specified state.
+    """
+    query = f"""
+        SELECT
+            property_id,
+            name,
+            address,
+            city,
+            state
+        FROM `{PROJECT_ID}.{DATASET}.properties`
+        WHERE LOWER(state) = LOWER(@state)
+        ORDER BY property_id
+    """
+
+    job_config = bigquery.QueryJobConfig(
+        query_parameters=[
+            bigquery.ScalarQueryParameter("state", "STRING", state)
+        ]
+    )
+
+    try:
+        results = list(bq.query(query, job_config=job_config).result())
+    except Exception as e:
+        raise HTTPException(500, f"Database query failed: {str(e)}")
+
+    if not results:
+        raise HTTPException(404, f"No properties found in state '{state}'")
+
+    return [dict(row) for row in results]
+
+
+@app.get("/properties/postal/{postal_code}")
+def get_properties_by_postal(postal_code: str, bq: bigquery.Client = Depends(get_bq_client)):
+    """
+    Returns all properties with the specified postal code.
+    """
+    query = f"""
+        SELECT
+            property_id,
+            name,
+            address,
+            city,
+            state,
+            postal_code
+        FROM `{PROJECT_ID}.{DATASET}.properties`
+        WHERE postal_code = @postal_code
+        ORDER BY property_id
+    """
+
+    job_config = bigquery.QueryJobConfig(
+        query_parameters=[
+            bigquery.ScalarQueryParameter("postal_code", "STRING", postal_code)
+        ]
+    )
+
+    try:
+        results = list(bq.query(query, job_config=job_config).result())
+    except Exception as e:
+        raise HTTPException(500, f"Database query failed: {str(e)}")
+
+    if not results:
+        raise HTTPException(404, f"No properties found with postal code '{postal_code}'")
+
+    return [dict(row) for row in results]
+
+
+@app.get("/properties/tenant/{tenant_name}")
+def get_properties_by_tenant(tenant_name: str, bq: bigquery.Client = Depends(get_bq_client)):
+    """
+    Returns all properties rented by the specified tenant.
+    """
+    query = f"""
+        SELECT
+            property_id,
+            name,
+            address,
+            city,
+            state,
+            tenant_name
+        FROM `{PROJECT_ID}.{DATASET}.properties`
+        WHERE LOWER(tenant_name) = LOWER(@tenant_name)
+        ORDER BY property_id
+    """
+
+    job_config = bigquery.QueryJobConfig(
+        query_parameters=[
+            bigquery.ScalarQueryParameter("tenant_name", "STRING", tenant_name)
+        ]
+    )
+
+    try:
+        results = list(bq.query(query, job_config=job_config).result())
+    except Exception as e:
+        raise HTTPException(500, f"Database query failed: {str(e)}")
+
+    if not results:
+        raise HTTPException(404, f"No properties found for tenant '{tenant_name}'")
+
+    return [dict(row) for row in results]
