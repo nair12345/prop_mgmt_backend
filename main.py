@@ -245,19 +245,15 @@ def create_expense(property_id: int, expense: Expense):
 # GET 1: /properties/addresses
 # Returns all property IDs + addresses
 # -----------------------------
-@app.get("/properties/addresses")
-def get_property_addresses():
+@app.get("/properties/owners")
+def get_property_owners():
     try:
         query = f"""
-            SELECT property_id, address
+            SELECT property_id, owner
             FROM `{PROJECT_ID}.{DATASET}.properties`
             ORDER BY property_id
         """
         rows = client.query(query).result()
         return [dict(row) for row in rows]
-
     except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to fetch property addresses: {str(e)}"
-        )
+        raise HTTPException(500, f"Failed to fetch owners: {str(e)}")
