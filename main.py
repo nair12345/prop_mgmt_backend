@@ -6,6 +6,23 @@ app = FastAPI()
 PROJECT_ID = "propertydb-492521"
 DATASET = "Propertydb"
 
+from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi.middleware.cors import CORSMiddleware # 1. Import this
+from google.cloud import bigquery
+
+app = FastAPI()
+
+# 2. Add this block right after app = FastAPI()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"], # Allows all origins (good for development/testing)
+    allow_credentials=True,
+    allow_methods=["*"], # Allows all methods (GET, POST, PUT, DELETE, etc.)
+    allow_headers=["*"], # Allows all headers
+)
+
+PROJECT_ID = "propertydb-492521"
+DATASET = "Propertydb"
 
 # ---------------------------------------------------------------------------
 # BigQuery Client Dependency
