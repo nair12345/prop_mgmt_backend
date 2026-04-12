@@ -289,4 +289,100 @@ def create_expense(property_id: int, payload: dict, bq: bigquery.Client = Depend
 
     return {"status": "success", "message": "Expense record created"}
 
+# ---------------------------------------------------------------------------
+# CREATE, UPDATE, DELETE PROPERTIES
+# ---------------------------------------------------------------------------
+
+@app.post("/properties", status_code=status.HTTP_201_CREATED)
+def create_property(payload: dict, bq: bigquery.Client = Depends(get_bq_client)):
+    # 1. Find the highest existing property_id to generate a new one
+    max_id_query = f"SELECT MAX(property_id) as max_id FROM `{PROJECT_ID}.{DATASET}.properties`"
+    try:
+        max_id_result = list(bq.query(max_id_query).result())
+        new_id = (max_id_result[0]["max_id"] or 0) + 1
+    except Exception as e:
+        raise HTTPException(500, f"Failed to generate new property ID: {str(e)}")
+
+    # 2. Insert the new property
+    query = f"""
+        INSERT INTO `{PROJECT_ID}.{DATASET}.properties`
+        (property_id, name, address, city, state, postal_code, property_type, tenant_name, monthly_rent)
+        VALUES (@property_id, @name, @address, @city, @state, @postal_code, @property_type, @tenant_name, @monthly_rent)
+    """
+    
+    job_config = bigquery.QueryJobConfig(
+        query_parameters=[
+            bigquery.ScalarQueryParameter("property_id", "INT64", new_id),
+            bigquery.ScalarQueryParameter("name", "STRING", payload.get("name", "")),
+            bigquery.ScalarQueryParameter("address", "STRING", payload.get("address", "")),
+            bigquery.ScalarQueryParameter("city", "STRING", payload.get("city", "")),
+            bigquery.ScalarQueryParameter("state", "STRING", payload.get("state", "")),
+            bigquery.ScalarQueryParameter("postal_code", "STRING", payload.get("postal_code", "")),
+            bigquery.ScalarQueryParameter("property_type", "STRING", payload.get("property_type", "Single-Family")),
+            bigquery.ScalarQueryParameter("tenant_name", "STRING", payload.get("tenant_name", "")),
+            bigquery.ScalarQueryParameter("monthly_rent", "FLOAT64", payload.get("monthly_rent", 0.0)),
+        ]
+    )
+
+    try:
+        bq.query(query, job_config=job_config).result()
+    except Exception as e:
+        raise HTTPException(500, f"Insert failed: {str(e)}")
+
+    # Return the created property with its new ID
+    payload["property_id"] = new_id
+    return payload
+
+
+@app.put("/properties/{property_id}")
+def update_property(property_id: int, payload: dict, bq: bigquery.Client = Depends(get_bq_client)):
+    query = f"""
+        UPDATE `{PROJECT_ID}.{DATASET}.properties`
+        SET name = @name, address = @address, city = @city, state = @state, 
+            postal_code = @postal_code, property_type = @property_type, 
+            tenant_name = @tenant_name, monthly_rent = @monthly_rent
+        WHERE property_id = @property_id
+    """
+    
+    job_config = bigquery.QueryJobConfig(
+        query_parameters=[
+            bigquery.ScalarQueryParameter("property_id", "INT64", property_id),
+            bigquery.ScalarQueryParameter("name", "STRING", payload.get("name", "")),
+            bigquery.ScalarQueryParameter("address", "STRING", payload.get("address", "")),
+            bigquery.ScalarQueryParameter("city", "STRING", payload.get("city", "")),
+            bigquery.ScalarQueryParameter("state", "STRING", payload.get("state", "")),
+            bigquery.ScalarQueryParameter("postal_code", "STRING", payload.get("postal_code", "")),
+            bigquery.ScalarQueryParameter("property_type", "STRING", payload.get("property_type", "Single-Family")),
+            bigquery.ScalarQueryParameter("tenant_name", "STRING", payload.get("tenant_name", "")),
+            bigquery.ScalarQueryParameter("monthly_rent", "FLOAT64", payload.get("monthly_rent", 0.0)),
+        ]
+    )
+
+    try:
+        bq.query(query, job_config=job_config).result()
+    except Exception as e:
+        raise HTTPException(500, f"Update failed: {str(e)}")
+
+    payload["property_id"] = property_id
+    return payload
+
+
+@app.delete("/properties/{property_id}")
+def delete_property(property_id: int, bq: bigquery.Client = Depends(get_bq_client)):
+    query = f"""
+        DELETE FROM `{PROJECT_ID}.{DATASET}.properties`
+        WHERE property_id = @property_id
+    """
+    
+    job_config = bigquery.QueryJobConfig(
+        query_parameters=[bigquery.ScalarQueryParameter("property_id", "INT64", property_id)]
+    )
+
+    try:
+        bq.query(query, job_config=job_config).result()
+    except Exception as e:
+        raise HTTPException(500, f"Delete failed: {str(e)}")
+
+    return {"status": "success", "message": f"Property {property_id} deleted"}
+
 
