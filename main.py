@@ -280,20 +280,4 @@ def create_expense(property_id: int, payload: dict, bq: bigquery.Client = Depend
 
     return {"status": "success", "message": "Expense record created"}
 
-from fastapi import FastAPI, Depends, HTTPException, status
-from fastapi.middleware.cors import CORSMiddleware
-from google.cloud import bigquery
 
-app = FastAPI()
-
-# --- ADD THIS CORS BLOCK ---
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"], 
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-PROJECT_ID = "propertydb-492521"
-DATASET = "Propertydb"
