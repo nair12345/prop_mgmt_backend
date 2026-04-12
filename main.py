@@ -240,3 +240,42 @@ def get_expenses(property_id: int, bq: bigquery.Client = Depends(get_bq_client))
         return rows  # empty list allowed
     except Exception as e:
         raise HTTPException(500, f"Failed to fetch expenses: {str(e)}")
+
+@app.post("/expenses/{property_id}")
+def create_expense(property_id: int, payload: dict, bq: bigquery.Client = Depends(get_bq_client)):
+    """
+    Creates a new expense record for a property.
+    """
+    # Required fields
+    if "amount" not in payload or "date" not in payload or "category" not in payload:
+        raise HTTPException(
+            status_code=400,
+            detail="Request must include 'amount', 'date', and 'category'"
+        )
+
+    query = f"""
+        INSERT INTO `{PROJECT_ID}.{DATASET}.expenses`
+        (property_id, amount, date, category, vendor, description)
+        VALUES (@property_id, @amount, @date, @category, @vendor, @description)
+    """
+
+    job_config = bigquery.QueryJobConfig(
+        query_parameters=[
+            bigquery.ScalarQueryParameter("property_id", "INT64", property_id),
+            bigquery.ScalarQueryParameter("amount", "FLOAT64", payload["amount"]),
+            bigquery.ScalarQueryParameter("date", "DATE", payload["date"]),
+            bigquery.ScalarQueryParameter("category", "STRING", payload["category"]),
+            bigquery.ScalarQueryParameter("vendor", "STRING", payload.get("vendor")),
+            bigquery.ScalarQueryParameter("description", "STRING", payload.get("description")),
+        ]
+    )
+
+    try:
+        bq.query(query, job_config=job_config).result()
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Insert failed: {str(e)}"
+        )
+
+    return {"status": "success", "message": "Expense record created"}
