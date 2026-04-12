@@ -1,12 +1,4 @@
 from fastapi import FastAPI, Depends, HTTPException, status
-from google.cloud import bigquery
-
-app = FastAPI()
-
-PROJECT_ID = "propertydb-492521"
-DATASET = "Propertydb"
-
-from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware # 1. Import this
 from google.cloud import bigquery
 
