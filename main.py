@@ -252,24 +252,28 @@ def get_expenses(property_id: int, bq: bigquery.Client = Depends(get_bq_client))
 
 @app.post("/expenses/{property_id}")
 def create_expense(property_id: int, payload: dict, bq: bigquery.Client = Depends(get_bq_client)):
-    """
-    Creates a new expense record for a property.
-    """
-    # Required fields
     if "amount" not in payload or "date" not in payload or "category" not in payload:
         raise HTTPException(
             status_code=400,
             detail="Request must include 'amount', 'date', and 'category'"
         )
 
+    # Get the ID sent by the frontend
+    expense_id = payload.get("expense_id")
+    if expense_id is None:
+        import random
+        expense_id = random.randint(1, 2147483647)
+
+    # FIXED: Added expense_id to the column list and values
     query = f"""
         INSERT INTO `{PROJECT_ID}.{DATASET}.expenses`
-        (property_id, amount, date, category, vendor, description)
-        VALUES (@property_id, @amount, @date, @category, @vendor, @description)
+        (expense_id, property_id, amount, date, category, vendor, description)
+        VALUES (@expense_id, @property_id, @amount, @date, @category, @vendor, @description)
     """
 
     job_config = bigquery.QueryJobConfig(
         query_parameters=[
+            bigquery.ScalarQueryParameter("expense_id", "INT64", expense_id),
             bigquery.ScalarQueryParameter("property_id", "INT64", property_id),
             bigquery.ScalarQueryParameter("amount", "FLOAT64", payload["amount"]),
             bigquery.ScalarQueryParameter("date", "DATE", payload["date"]),
@@ -287,7 +291,7 @@ def create_expense(property_id: int, payload: dict, bq: bigquery.Client = Depend
             detail=f"Insert failed: {str(e)}"
         )
 
-    return {"status": "success", "message": "Expense record created"}
+    return {"status": "success", "message": "Expense record created", "expense_id": expense_id}
 
 # ---------------------------------------------------------------------------
 # CREATE, UPDATE, DELETE PROPERTIES
