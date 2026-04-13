@@ -385,4 +385,13 @@ def delete_property(property_id: int, bq: bigquery.Client = Depends(get_bq_clien
 
     return {"status": "success", "message": f"Property {property_id} deleted"}
 
+import google.auth
 
+@app.get("/debug/auth")
+def debug_auth():
+    credentials, project = google.auth.default()
+    return {
+        "project_id": project,
+        "service_account_email": getattr(credentials, 'service_account_email', 'Unknown'),
+        "identity_type": str(type(credentials))
+    }
