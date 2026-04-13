@@ -198,20 +198,27 @@ def get_income(property_id: int, bq: bigquery.Client = Depends(get_bq_client)):
 
     return rows  # return empty list if none
 
-
 @app.post("/income/{property_id}")
 def create_income(property_id: int, payload: dict, bq: bigquery.Client = Depends(get_bq_client)):
     if "amount" not in payload or "date" not in payload:
         raise HTTPException(400, "Request must include 'amount' and 'date'")
 
+    # Get ID from frontend or generate one
+    income_id = payload.get("income_id") or payload.get("id")
+    if income_id is None:
+        import random
+        income_id = random.randint(1, 2147483647)
+
+    # FIXED: Added income_id to columns and values
     query = f"""
         INSERT INTO `{PROJECT_ID}.{DATASET}.income`
-        (property_id, amount, date, description)
-        VALUES (@property_id, @amount, @date, @description)
+        (income_id, property_id, amount, date, description)
+        VALUES (@income_id, @property_id, @amount, @date, @description)
     """
 
     job_config = bigquery.QueryJobConfig(
         query_parameters=[
+            bigquery.ScalarQueryParameter("income_id", "INT64", income_id),
             bigquery.ScalarQueryParameter("property_id", "INT64", property_id),
             bigquery.ScalarQueryParameter("amount", "FLOAT64", payload["amount"]),
             bigquery.ScalarQueryParameter("date", "DATE", payload["date"]),
@@ -224,7 +231,8 @@ def create_income(property_id: int, payload: dict, bq: bigquery.Client = Depends
     except Exception as e:
         raise HTTPException(500, f"Insert failed: {str(e)}")
 
-    return {"status": "success", "message": "Income record created"}
+    return {"status": "success", "message": "Income record created", "income_id": income_id}
+
 
 
 # ---------------------------------------------------------------------------
@@ -253,18 +261,15 @@ def get_expenses(property_id: int, bq: bigquery.Client = Depends(get_bq_client))
 @app.post("/expenses/{property_id}")
 def create_expense(property_id: int, payload: dict, bq: bigquery.Client = Depends(get_bq_client)):
     if "amount" not in payload or "date" not in payload or "category" not in payload:
-        raise HTTPException(
-            status_code=400,
-            detail="Request must include 'amount', 'date', and 'category'"
-        )
+        raise HTTPException(400, "Request must include 'amount', 'date', and 'category'")
 
-    # Get the ID sent by the frontend
-    expense_id = payload.get("expense_id")
+    # Get ID from frontend or generate one
+    expense_id = payload.get("expense_id") or payload.get("id")
     if expense_id is None:
         import random
         expense_id = random.randint(1, 2147483647)
 
-    # FIXED: Added expense_id to the column list and values
+    # FIXED: Added expense_id to columns and values
     query = f"""
         INSERT INTO `{PROJECT_ID}.{DATASET}.expenses`
         (expense_id, property_id, amount, date, category, vendor, description)
@@ -286,10 +291,7 @@ def create_expense(property_id: int, payload: dict, bq: bigquery.Client = Depend
     try:
         bq.query(query, job_config=job_config).result()
     except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Insert failed: {str(e)}"
-        )
+        raise HTTPException(500, f"Insert failed: {str(e)}")
 
     return {"status": "success", "message": "Expense record created", "expense_id": expense_id}
 
